@@ -1,0 +1,34 @@
+{
+  "base_url": "",
+  "password": "123456",
+
+  "mode": "exam",
+  "fresh": true,
+  "points_opt_in": true,
+
+  "strategy": "per-question",
+  "delay_min": 7.0,
+  "delay_max": 13.0,
+  "assume_limit": 900,
+
+  "submit": true,
+  "final_check": true,
+
+  "poll_interval": 0.8,
+  "poll_tries": 3,
+  "wrong_session": "same",
+  "probe_fill": "X",
+
+  "trust_answer_api": "auto",
+  "trust_questions_answer": "auto",
+
+  "allow_formal": false,
+  "use_cache": true,
+
+  "http_timeout": 15,
+  "retries": 3,
+  "insecure_tls": false,
+
+  "save_raw": true,
+  "input_wait": true
+}

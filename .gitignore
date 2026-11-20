@@ -1,0 +1,27 @@
+# 记忆库（本地数据，不公开）
+.dsh-meow/
+
+# 本地账号与网址（含个人信息，绝不提交）
+accounts.txt
+刷题网址.txt
+url.txt
+地址.txt
+
+# 运行产物
+logs/
+status/
+answer_cache.json
+runtime/
+
+# 构建产物
+build/
+dist/
+*.spec
+__pycache__/
+*.py[cod]
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
