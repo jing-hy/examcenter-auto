@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""在线实测脚本：只核对交接文档 §6 的确认项，绝不交卷、绝不跑全卷。
+"""在线实测脚本：只核对已经确认过的接口行为，绝不交卷、绝不跑全卷。
 
     python tools/probe_server.py --account demo001 --paper 2
     python tools/probe_server.py --account demo001 --paper 2 --max-questions 3

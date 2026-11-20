@@ -2,7 +2,7 @@
 """考试中心接口封装。
 
 路径前缀来自前端 core.js:36 的 window.EXAM_BASE = '/plugin/examcenter'。
-字段名严格按 student.js 里实际读取的键名，详见交接文档的契约表。
+字段名严格按 student.js 里实际读取的键名（契约见 README 的接口说明）。
 """
 
 from . import netio
