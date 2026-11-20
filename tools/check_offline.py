@@ -28,9 +28,10 @@ PASSWORD = "123456"
 ALLOWED_HOSTS = {
     "127.0.0.1": "本机回环（离线靶场）",
     "localhost": "本机回环",
-    "10.0.0.10": "你自己的做题服务器（内网，由你在 txt 里提供）",
+    "10.42.125.67": "内置候选地址：启动时做一次 TCP 探活，连不上就跳过",
     "www.python.org": "只出现在 tools/make_portable.ps1：可选的一次性准备步骤",
     "python.org": "同上",
+    "github.com": "只出现在 README 的下载链接，运行期不访问",
 }
 
 URL_RE = re.compile(r"https?://[^\s\"'()<>,\uff0c\u3002\uff09]+")

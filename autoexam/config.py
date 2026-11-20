@@ -10,6 +10,7 @@ import argparse
 import io
 import json
 import os
+import socket
 import sys
 import urllib.parse
 
@@ -28,6 +29,14 @@ def _project_root():
 ROOT = _project_root()
 DEFAULT_CONFIG_PATH = os.path.join(ROOT, "config.json")
 URL_FILE_CANDIDATES = ["刷题网址.txt", "url.txt", "地址.txt"]
+
+# 没有 --base、也没有网址 txt 时，启动先按顺序探这些地址；
+# 第一个能连上的就直接用，全都不通才让用户手输。
+DEFAULT_BASE_CANDIDATES = [
+    "http://10.42.125.67:5000",
+]
+# TCP 探活超时（秒）。内网很快，0.8 秒足够；不在内网时最多卡这么久。
+BASE_PROBE_TIMEOUT = 0.8
 LOG_DIR = os.path.join(ROOT, "logs")
 RAW_DIR = os.path.join(LOG_DIR, "raw")
 STATUS_DIR = os.path.join(ROOT, "status")
@@ -111,21 +120,65 @@ def load_config(path=None, cli_overrides=None):
     cfg.setdefault("raw_dir", RAW_DIR)
     cfg.setdefault("status_dir", STATUS_DIR)
     cfg.setdefault("cache_path", CACHE_PATH)
-    cfg["base_url"] = resolve_base_url(cfg.get("base_url"))
+    explicit_base = str(cfg.get("base_url") or "").strip()
+    if explicit_base:
+        cfg["base_url"] = _strip_base(explicit_base)
+        cfg["base_source"] = "参数 / config.json"
+    else:
+        txt_url = read_url_from_txt()
+        if txt_url:
+            cfg["base_url"] = _strip_base(txt_url)
+            cfg["base_source"] = "网址文件"
+        else:
+            auto_base = first_reachable_base()
+            cfg["base_url"] = auto_base
+            cfg["base_source"] = "内置候选地址（已连通）" if auto_base else ""
     if cfg.get("delay_max") is not None and cfg.get("delay_min") is not None:
         if float(cfg["delay_max"]) < float(cfg["delay_min"]):
             cfg["delay_max"] = cfg["delay_min"]
     return cfg
 
 
-def resolve_base_url(given):
-    """给定值优先；否则从用户说的"新建文本文档.txt"里读网址。"""
+def probe_base(url, timeout=BASE_PROBE_TIMEOUT):
+    """TCP 探活：只看 host:port 能不能连上，不发任何 HTTP 请求。"""
+    try:
+        parts = urllib.parse.urlsplit(_strip_base(url))
+    except Exception:
+        return False
+    host = parts.hostname
+    if not host:
+        return False
+    port = parts.port or (443 if parts.scheme == "https" else 80)
+    sock = None
+    try:
+        sock = socket.create_connection((host, port), timeout)
+        return True
+    except OSError:
+        return False
+    finally:
+        if sock is not None:
+            try:
+                sock.close()
+            except OSError:
+                pass
+
+
+def first_reachable_base(candidates=None, timeout=BASE_PROBE_TIMEOUT):
+    """按顺序探候选地址，返回第一个连得上的（已归一成 scheme://host:port）。"""
+    for url in candidates if candidates is not None else DEFAULT_BASE_CANDIDATES:
+        if probe_base(url, timeout):
+            return _strip_base(url)
+    return ""
+
+
+def resolve_base_url(given, candidates=None, timeout=BASE_PROBE_TIMEOUT):
+    """决定 Base URL 的来源，优先级：显式参数 > 网址 txt > 内置候选地址探活。"""
     if given and str(given).strip():
         return _strip_base(str(given).strip())
     url = read_url_from_txt()
     if url:
         return _strip_base(url)
-    return ""
+    return first_reachable_base(candidates, timeout)
 
 
 def _strip_base(url):
@@ -222,7 +275,8 @@ def build_parser():
     )
     parser.add_argument("--config", default=None, help="配置文件路径（默认 ./config.json）")
     parser.add_argument("--base", dest="base_url", default=None,
-                        help="服务器根地址，如 http://10.0.0.10:5000；缺省自动读网址 txt")
+                        help="服务器根地址，如 http://10.42.125.67:5000；\n"
+                             "缺省先读网址 txt，再自动探内置候选地址")
     parser.add_argument("--account", dest="account", default=None, help="单个账号（worker 模式必填）")
     parser.add_argument("--accounts", dest="accounts_raw", default=None,
                         help="多个账号，逗号或空格分隔；也支持 账号:密码")

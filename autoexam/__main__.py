@@ -21,7 +21,7 @@ HELP_TEXT = u"""
   交互菜单             python run_autoexam.py
   单账号直接跑         python run_autoexam.py --account demo001 --paper 2
   多账号多开           python run_autoexam.py --accounts "demo001,demo002"
-  指定服务器           python run_autoexam.py --base http://10.0.0.10:5000
+  指定服务器           python run_autoexam.py --base http://10.42.125.67:5000
   登录页搞不定时       python run_autoexam.py --account 学号 --cookie "SESSION=xxxx"
   先离线试跑           python mock/server.py --port 8420
                        python run_autoexam.py --base http://127.0.0.1:8420 --account demo001
@@ -51,6 +51,9 @@ def _banner(cfg, logger):
     lines = []
     base = cfg.get("base_url") or "（未找到，请用 --base 指定）"
     lines.append("服务器    %s" % base)
+    source = cfg.get("base_source") or ""
+    if source:
+        lines.append("地址来源  %s" % source)
     if hint.get("paper_id"):
         lines.append("网址提示  试卷 id=%s  模式=%s  计入积分=%s" %
                      (hint.get("paper_id"), hint.get("mode") or "exam",
@@ -121,7 +124,7 @@ def _menu(cfg, logger):
 
 def _session(cfg, logger, multi):
     if not cfg.get("base_url"):
-        base = ui.ask("  请输入服务器地址（如 http://10.0.0.10:5000）：", allow_empty=False)
+        base = ui.ask("  请输入服务器地址（如 http://10.42.125.67:5000）：", allow_empty=False)
         cfg["base_url"] = netio.normalize_base(base)
     logger.plain("")
     logger.plain("  -- 登录 --")

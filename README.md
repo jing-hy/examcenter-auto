@@ -46,8 +46,11 @@ powershell -ExecutionPolicy Bypass -File tools/make_portable.ps1
 
 ## 二、第一次使用
 
-1. **填服务器地址**。把刷题网址粘进项目目录下的 `刷题网址.txt`（或 `url.txt` / `地址.txt`），
-   程序会自动认出 `scheme://host:port`；也可以每次用 `--base` 指定。
+1. **服务器地址一般不用手填**。程序启动时会先按顺序探内置候选地址
+   （默认 `http://10.42.125.67:5000`，TCP 探活，连不上就跳过），连上就直接用，
+   启动横幅里会显示「地址来源：内置候选地址（已连通）」。都连不上才需要你手输，
+   也可以把网址粘进项目目录下的 `刷题网址.txt`（或 `url.txt` / `地址.txt`），
+   或用 `--base` 指定——优先级是 参数 > 网址 txt > 内置候选。
 2. 双击 `启动.bat`（或用 exe）→ 菜单选 `1`（单账号）或 `2`（多账号多开）。
 3. 输入账号、密码（默认 `123456`，可改 `config.json`）。
 4. 在试卷列表里选一套：输入序号；输入 **`A` = 全部积分**。
@@ -195,7 +198,7 @@ answer_cache.json          答案缓存
 ## 八、开发者
 
 ```bat
-python -m unittest discover -s tests -v     rem 59 个测试
+python -m unittest discover -s tests -v     rem 67 个测试
 python tools/check_compat.py                rem 3.7 语法兼容检查
 python tools/smoke.py                       rem 靶场契约自检
 python tools/check_offline.py               rem 离线依赖验证（只连本机）
