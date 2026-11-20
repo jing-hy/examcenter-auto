@@ -23,7 +23,7 @@
 
 ### 方式 A：下载 exe（不需要装 Python）
 
-在 Releases 页下载 `autoexam-win64.zip`，解压后双击 `autoexam.exe`。
+到 [Releases](https://github.com/jing-hy/examcenter-auto/releases) 下载 `autoexam-win64.zip`，解压后双击 `autoexam.exe`。
 整个目录一起带走即可，目标电脑不用装 Python。
 
 ### 方式 B：本机有 Python（3.8+）
