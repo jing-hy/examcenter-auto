@@ -29,6 +29,6 @@
   "retries": 3,
   "insecure_tls": false,
 
-  "save_raw": true,
+  "save_raw": false,
   "input_wait": true
 }

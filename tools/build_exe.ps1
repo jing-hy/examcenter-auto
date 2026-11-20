@@ -7,7 +7,11 @@
 #   py -3.8 -m pip install pyinstaller==5.13.2
 #   powershell -ExecutionPolicy Bypass -File tools\build_exe.ps1
 #
-# 产物：dist\autoexam\ 整个目录（可压缩后分发，目标机不需要 Python）
+# 没有 py 启动器（比如用的是免安装版 Python 3.8）时，先指定解释器路径：
+#   $env:PYTHON38 = "C:\Users\you\py38\python.exe"
+#   powershell -ExecutionPolicy Bypass -File tools\build_exe.ps1
+#
+# 产物：dist\autoexam\ 整个目录 + dist\autoexam-win64.zip（目标机不需要 Python）
 
 $ErrorActionPreference = 'Stop'
 
@@ -17,19 +21,25 @@ try {
     Write-Host ""
     Write-Host "项目根目录: $root"
 
-    # 校验 Python 3.8
-    $pyLauncher = Get-Command py -ErrorAction SilentlyContinue
-    if (-not $pyLauncher) {
-        Write-Host "[错误] 没找到 py 启动器；请安装 Python 3.8 后再打包。" -ForegroundColor Red
-        exit 1
+    # 解释器：优先用 $env:PYTHON38，否则退回 py -3.8
+    $pyExe = $env:PYTHON38
+    $pyArgs = @()
+    if (-not $pyExe) {
+        if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
+            Write-Host "[错误] 没找到 Python 3.8：设置 $env:PYTHON38 或安装 py 启动器。" -ForegroundColor Red
+            exit 1
+        }
+        $pyExe = "py"
+        $pyArgs = @("-3.8")
     }
-    $version = (& py -3.8 -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>&1)
+
+    $version = (& $pyExe @pyArgs -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>&1)
     if ($version -ne "3.8") {
         Write-Host "[错误] 需要用 Python 3.8 打包，当前拿到：$version" -ForegroundColor Red
         Write-Host "       安装：https://www.python.org/downloads/release/python-3810/" -ForegroundColor Yellow
         exit 1
     }
-    & py -3.8 -c "import PyInstaller, sys; sys.exit(0 if PyInstaller.__version__.startswith('5.') else 1)"
+    & $pyExe @pyArgs -c "import PyInstaller, sys; sys.exit(0 if PyInstaller.__version__.startswith('5.') else 1)"
     if ($LASTEXITCODE -ne 0) {
         Write-Host "[错误] 需要 PyInstaller 5.x（6.x 的 bootloader 不再支持 Win7）。" -ForegroundColor Red
         Write-Host "       py -3.8 -m pip install pyinstaller==5.13.2" -ForegroundColor Yellow
@@ -37,7 +47,7 @@ try {
     }
 
     Write-Host "[打包] PyInstaller onedir ..."
-    & py -3.8 -m PyInstaller `
+    & $pyExe @pyArgs -m PyInstaller `
         --noconfirm `
         --clean `
         --onedir `
