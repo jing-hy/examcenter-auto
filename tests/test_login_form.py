@@ -163,5 +163,23 @@ class LoginFlowTest(unittest.TestCase):
             loginmod.login(cfg, self._client(cfg), ui.Logger(None, echo=False), ACCOUNT, PASSWORD)
 
 
+class UnreachableLoginTest(unittest.TestCase):
+    """地址写错时必须秒失败，绝不能等 3 次 × 15 秒超时（看起来像卡死）。"""
+
+    def test_login_fails_fast_when_server_unreachable(self):
+        import time
+        cfg = configmod.load_config(None, {
+            "base_url": "http://127.0.0.1:1",
+            "http_timeout": 15,
+            "retries": 3,
+        })
+        client = netio.HttpClient(cfg["base_url"], timeout=15, retries=3,
+                                  logger=ui.Logger(None, echo=False))
+        started = time.time()
+        with self.assertRaises(netio.NetworkError):
+            loginmod.login(cfg, client, ui.Logger(None, echo=False), ACCOUNT, PASSWORD)
+        self.assertLess(time.time() - started, 4.0, "探活应当在 1 秒内给出结论")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

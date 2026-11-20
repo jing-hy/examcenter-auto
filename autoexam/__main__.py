@@ -123,24 +123,32 @@ def _menu(cfg, logger):
 
 
 def _session(cfg, logger, multi):
-    if not cfg.get("base_url"):
-        base = ui.ask("  请输入服务器地址（如 http://10.42.125.67:5000）：", allow_empty=False)
-        cfg["base_url"] = netio.normalize_base(base)
-    logger.plain("")
-    logger.plain("  -- 登录 --")
-    username = ui.ask("  账号：", allow_empty=False)
-    password = ui.ask("  密码（直接回车用默认 %s）：" % (cfg.get("password") or "123456"),
-                      default=cfg.get("password") or "123456")
+    while True:
+        if not cfg.get("base_url"):
+            base = ui.ask("  请输入服务器地址（如 http://10.42.125.67:5000）：", allow_empty=False)
+            cfg["base_url"] = netio.normalize_base(base)
+            cfg["base_source"] = "手动输入"
+        logger.plain("")
+        logger.plain("  -- 登录 --")
+        logger.plain("  服务器：%s" % cfg.get("base_url"))
+        username = ui.ask("  账号：", allow_empty=False)
+        password = ui.ask("  密码（直接回车用默认 %s）：" % (cfg.get("password") or "123456"),
+                          default=cfg.get("password") or "123456")
 
-    try:
-        client, api, user = supervisor.probe_login(cfg, logger, username, password)
-    except netio.NetworkError as exc:
-        logger.error("连不上服务器：%s" % exc)
-        logger.warn("检查一下是不是不在校内网、或者地址写错了。")
-        return
-    except Exception as exc:
-        logger.error("登录失败：%s" % exc)
-        return
+        try:
+            client, api, user = supervisor.probe_login(cfg, logger, username, password)
+        except netio.NetworkError as exc:
+            logger.error("连不上服务器：%s" % exc)
+            logger.warn("检查一下是不是不在校内网、或者地址写错了。")
+            cfg["base_url"] = ""
+            cfg["base_source"] = ""
+            if ui.ask_yes_no("  换一个服务器地址再试？", default=True):
+                continue
+            return
+        except Exception as exc:
+            logger.error("登录失败：%s" % exc)
+            return
+        break
 
     paper = supervisor.pick_paper(api, logger, cfg)
     if not paper:

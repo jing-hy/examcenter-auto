@@ -198,7 +198,7 @@ answer_cache.json          答案缓存
 ## 八、开发者
 
 ```bat
-python -m unittest discover -s tests -v     rem 67 个测试
+python -m unittest discover -s tests -v     rem 68 个测试
 python tools/check_compat.py                rem 3.7 语法兼容检查
 python tools/smoke.py                       rem 靶场契约自检
 python tools/check_offline.py               rem 离线依赖验证（只连本机）

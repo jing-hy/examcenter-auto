@@ -15,6 +15,7 @@ import io
 import os
 import urllib.parse
 
+from . import config as configmod
 from . import netio
 from . import privacy
 
@@ -253,11 +254,22 @@ def _diagnose(html, status, url):
 
 
 def login(cfg, client, logger, username, password=""):
-    """登录并返回 user dict；失败抛 LoginError。"""
+    """登录并返回 user dict；失败抛 LoginError；连不上抛 netio.NetworkError。"""
     username = (username or "").strip()
     if not username:
         raise LoginError("账号为空")
     password = password or cfg.get("password") or "123456"
+
+    # ---- 通道 0：先 TCP 探活。
+    # 不做这一步的话，地址写错/不在内网时 urllib 会把 3 次重试 × 15 秒超时全等完，
+    # 中间没有任何输出，看起来就是"卡死"。这里 1 秒内就能给出明确结论。
+    base = cfg.get("base_url") or ""
+    if base:
+        logger.info("连接服务器 %s ……" % base)
+        if not configmod.probe_base(base):
+            raise netio.NetworkError(
+                "连不上 %s：%.1f 秒内 TCP 端口不通（地址写错了？不在校内网？服务器没开？）"
+                % (base, configmod.BASE_PROBE_TIMEOUT))
 
     # ---- 通道 1：直接给 Cookie
     cookie = cfg.get("cookie") or ""
@@ -279,7 +291,8 @@ def login(cfg, client, logger, username, password=""):
 
     # ---- 通道 3：解析登录页表单
     login_path = cfg.get("login_url") or DEFAULT_LOGIN_PATH
-    resp = client.request(login_path, tag="login-page")
+    # 登录页只试一次：网络问题上面已经拦过，这里不做 3 次长重试
+    resp = client.request(login_path, tag="login-page", retries=1)
     html = resp.text
     saved = _dump_html(cfg, username, html)
     if saved:
