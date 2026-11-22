@@ -31,9 +31,10 @@
 > 单独拷走只会得到 `Error loading Python DLL ... 找不到指定的模块`，而且错误发生在 bootloader 阶段，
 > 表现就是「**双击没反应、连窗口都不出现**」。想要「就一个文件」，用下面的方式 A2。
 
-### 方式 A2：单文件版（拷一个 exe 就能跑）
+### 方式 A2：单文件版（推荐，拷一个 exe 就能跑）
 
-`dist/autoexam-single.exe` 是 onefile 打包，**只有一个文件**，放到任意目录双击即可。
+到 [Releases](https://github.com/jing-hy/examcenter-auto/releases) 下载 **`autoexam-single.exe`**，
+onefile 打包，**只有一个文件**，放到任意目录双击即可。
 运行时它会把自身解压到 `%TEMP%\_MEIxxxx`，所以首次启动比目录版多 1~2 秒，属正常现象；
 **默认不往 exe 所在目录写任何东西**：日志、状态、答案缓存都放系统临时目录
 （`%TEMP%\autoexam-run-xxxx`），程序正常退出时整个目录自动删除。
