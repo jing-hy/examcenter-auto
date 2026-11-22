@@ -1,4 +1,4 @@
-# 生成便携 Python 运行时（免安装，Win7 也能用）
+﻿# 生成便携 Python 运行时（免安装，Win7 也能用）
 #
 # 用法（在项目根目录，用 PowerShell 管理员或普通权限都行）：
 #   powershell -ExecutionPolicy Bypass -File tools\make_portable.ps1

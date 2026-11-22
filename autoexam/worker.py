@@ -363,6 +363,10 @@ def main(argv=None):
                 continue
             if key in overrides:
                 cfg[key] = overrides[key]
+        # 目录类不在 DEFAULTS 里，但必须跟随主进程（见 supervisor.job_payload）
+        for key in ("log_dir", "raw_dir", "status_dir", "cache_path"):
+            if overrides.get(key):
+                cfg[key] = overrides[key]
 
     # 账号与密码：环境变量优先（主进程通过 env 传，不落盘）
     username = (os.environ.get("AUTOEXAM_ACCOUNT") or job.get("account")

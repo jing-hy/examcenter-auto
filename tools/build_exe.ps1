@@ -1,4 +1,4 @@
-# 打成免安装的 exe 目录（PyInstaller onedir）
+﻿# 打成免安装的 exe 目录（PyInstaller onedir）
 #
 # 关键：必须用 **Python 3.8** 打包。Python 3.9+ 的运行时依赖 Win7 没有的系统 API，
 # 打出来的 exe 在 Win10/11 能跑、回 Win7 会直接报错。

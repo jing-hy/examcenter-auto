@@ -7,11 +7,14 @@
 """
 
 import argparse
+import atexit
 import io
 import json
 import os
+import shutil
 import socket
 import sys
+import tempfile
 import urllib.parse
 
 
@@ -37,10 +40,84 @@ DEFAULT_BASE_CANDIDATES = [
 ]
 # TCP 探活超时（秒）。内网很快，0.8 秒足够；不在内网时最多卡这么久。
 BASE_PROBE_TIMEOUT = 0.8
-LOG_DIR = os.path.join(ROOT, "logs")
+
+
+def _cleanup_runtime(path):
+    """本次运行的临时目录，进程正常退出时整个删掉。"""
+    try:
+        shutil.rmtree(path, ignore_errors=True)
+    except Exception:
+        pass
+
+
+def _pid_alive(pid):
+    """进程还在不在（Windows 上不能用 os.kill，会变成真的杀进程）。"""
+    if os.name != "nt":
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+    try:
+        import ctypes
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        STILL_ACTIVE = 259
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return False
+            return code.value == STILL_ACTIVE
+        finally:
+            kernel32.CloseHandle(handle)
+    except Exception:
+        return True  # 判断不了就当它活着，宁可留也不误删
+
+
+def _sweep_stale_runs(base):
+    """清掉上次被强杀/直接关窗口留下的临时目录。
+
+    正常退出由 atexit 删；关窗口或任务管理器结束不会走 atexit，
+    所以每次启动顺手扫一遍：目录名里带着 pid，进程已经没了就删。
+    """
+    try:
+        names = os.listdir(base)
+    except OSError:
+        return
+    for name in names:
+        if not name.startswith("autoexam-run-"):
+            continue
+        parts = name.split("-")
+        if len(parts) < 4:
+            continue
+        try:
+            pid = int(parts[2])
+        except ValueError:
+            continue
+        if pid == os.getpid() or _pid_alive(pid):
+            continue
+        _cleanup_runtime(os.path.join(base, name))
+
+
+def _make_runtime_root():
+    base = tempfile.gettempdir()
+    _sweep_stale_runs(base)
+    path = tempfile.mkdtemp(prefix="autoexam-run-%d-" % os.getpid(), dir=base)
+    atexit.register(_cleanup_runtime, path)
+    return path
+
+
+# 默认**不在程序目录/当前目录留任何东西**（用户要求：不要记录）。
+# 日志、状态、答案缓存都放系统临时目录，退出即删；运行期间仍可排查。
+# 要留档时加 --keep-files，恢复成程序目录下的 logs/、status/、answer_cache.json。
+RUNTIME_ROOT = _make_runtime_root()
+LOG_DIR = os.path.join(RUNTIME_ROOT, "logs")
 RAW_DIR = os.path.join(LOG_DIR, "raw")
-STATUS_DIR = os.path.join(ROOT, "status")
-CACHE_PATH = os.path.join(ROOT, "answer_cache.json")
+STATUS_DIR = os.path.join(RUNTIME_ROOT, "status")
+CACHE_PATH = os.path.join(RUNTIME_ROOT, "answer_cache.json")
 
 DEFAULTS = {
     # 服务器
@@ -79,6 +156,8 @@ DEFAULTS = {
     # 默认不把任何响应落盘：响应里可能带姓名、成绩、错题与 Cookie。
     # 需要排查接口时用 --save-raw 显式打开（落盘内容同样会做账号脱敏）。
     "save_raw": False,
+    # 默认不往程序目录写任何东西（见 RUNTIME_ROOT）；True 才落到 ./logs、./status
+    "keep_files": False,
     "input_wait": True,
     "new_console": True,
     "paper": None,
@@ -120,6 +199,12 @@ def load_config(path=None, cli_overrides=None):
     cfg.setdefault("raw_dir", RAW_DIR)
     cfg.setdefault("status_dir", STATUS_DIR)
     cfg.setdefault("cache_path", CACHE_PATH)
+    if cfg.get("keep_files"):
+        # 显式要求留档：写回程序目录（旧的默认行为）
+        cfg["log_dir"] = os.path.join(ROOT, "logs")
+        cfg["raw_dir"] = os.path.join(ROOT, "logs", "raw")
+        cfg["status_dir"] = os.path.join(ROOT, "status")
+        cfg["cache_path"] = os.path.join(ROOT, "answer_cache.json")
     explicit_base = str(cfg.get("base_url") or "").strip()
     if explicit_base:
         cfg["base_url"] = _strip_base(explicit_base)
@@ -329,6 +414,8 @@ def build_parser():
         ("--cache", "use_cache", "使用本地答案缓存", True),
         ("--allow-formal", "allow_formal", "允许刷正式考试卷（formal_exam）", False),
         ("--save-raw", "save_raw", "把每个请求的原始响应落盘到 logs/raw（默认关，排查接口时才开）", False),
+        ("--keep-files", "keep_files",
+         "把日志/状态/答案缓存写到程序目录（默认写系统临时目录、退出即删）", False),
         ("--input-wait", "input_wait", "结束后等待回车（独立窗口模式用）", True),
         ("--new-console", "new_console", "每个账号开独立控制台窗口", True),
         ("--insecure-tls", "insecure_tls", "忽略 HTTPS 证书校验", False),

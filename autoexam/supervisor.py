@@ -253,6 +253,11 @@ def job_payload(cfg, account, paper):
             continue
         payload[key] = cfg.get(key)
     payload["base_url"] = cfg.get("base_url")
+    # 这几个路径不在 DEFAULTS 里，但 worker 必须和主进程用同一套目录：
+    # 默认是"本次运行的临时目录"，每个进程各自 mkdtemp 出来的是不同目录，
+    # 不显式传过去，主进程就会在自己的 status 目录里等一个永远不出现的结果文件。
+    for key in ("log_dir", "raw_dir", "status_dir", "cache_path"):
+        payload[key] = cfg.get(key)
     return payload
 
 
